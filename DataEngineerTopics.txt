@@ -1,0 +1,40 @@
+Interview Duration -- 1hr
+Project Introduction, Python Question, Sql question, Bigquery complex data type, Airflow Operator, Pyspark, 
+
+Python -- Sorting,Searching, two pointer, sliding window, pandas dataframe, decorator
+
+SQL -- upsert command, date function, regex function, complex data type for bigquery, hive and pyspark
+
+Pyspark -- Architecture, Optimization,Dag, lineage, physical plan, logical plan, Narrow transformation, Wide transformation, salting, broadcast variable
+accumulator variable, UDF, Types of join architecture,SparkContext,SparkSession, Read, write, partition, bucket
+
+Databricks -- Architecture, mounting, Notebook parameter, Delta live table, creating database,table & Unity Catalog, Magic command, dbutils command
+
+Airflow -- BigqueryInsertJob,Python,Bash,DataprocCreateCluter,DataprocSubmitJob,DataprocDeleteCluster,PythonVirtualEnvOperator
+DatabricksRunNow,DatabricksCreateCluter,DatabricksSubmitJob,DatabricksDeleteCluster
+Deferable operator, Xcom push, Xcom pull, Setting Dependency, TriggerRule, TriggerAnotherDag, SFTP
+
+Bigquery -- Encryption, Decryption, Masking, View, Materializedview, authorizedview, giving access to dataset, Complex Data Type
+
+Hive -- Architecture, Complex Data Type
+
+Data Warehousing -- SCD Type 1,2,3,4, CDC, Incremental processing, Normalization 1NF,2NF,3NF, Snow schema, Star schema, Snowflake schema,
+
+Data Modelling -- Youtube, Walmart, Uber, 
+
+DVF,SDV,DataProfiling -- Pyspark
+
+Incremental
+------------
+table_process -- last_process, current_time
+
+src1
+src2
+src3
+
+
+
+
+
+
+
