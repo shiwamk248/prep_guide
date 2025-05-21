@@ -1,0 +1,288 @@
+Things to Prepare
+-----------------
+
+1 -- Watched sumit mittal mock interview
+2 -- Top 15 spark interview question
+3 -- AQE, Join Startegies
+4 -- Manish Kumar Data Warehouse playlist
+5 -- Manish Kumar Behavioural question
+6 -- Normalization, Denormalization, Type of indexing in DBMS
+
+Find occurrence of word in pyspark
+--------------------------
+Approach 1
+df = spark.read.text("file_path.txt")
+df.rdd.flatmap(lambda line: line.split(" ")).map(lampda word: (word,1)).reduceByKey(lambda a,b: a+b).show()
+
+Approach 2
+df = spark.read.text("file_path.txt")
+df.select("line", explode(col("val").split(" "))\
+	.withColumn("occurence",lit(1))\
+	.groupBy(col("val")).agg(sum(col("occurrence")).alias("cnt"))
+	.orderBy(col("cnt").desc())
+
+Best time to Buy and Sell Stock
+-------------------------------
+
+import sys
+list = [7,1,5,3,6,4]
+
+min_ele = list[0]
+max_profit = 0
+
+for i in range(1,len(list)):
+  min_ele = min(list[i],min_ele)
+  max_profit = max(list[i]-min_ele,max_profit)
+  
+  
+print(max_profit)
+
+
+Employee with max salary in each department
+-------------------------------------------
+Schema:
+emp_name,emp_id,emp_sal,manager_id,dept
+
+select *, dense_rank() over(partition by dept order by sal desc) as rnk
+qualify rnk = 1
+
+from pyspark.sql.window import Window
+
+window_spec = Window.partitionBy(col("dept")).orderBy(col("emp").desc())
+final_df = df.withColumn("rnk", dense_rank().over(window_spec)).filter(col("rnk") == 1).select(col("emp_name"))
+final_df.show()
+
+Employee earning more than there manager
+-----------------------------------------
+Schema:
+emp_name,emp_id,emp_sal,manager_id,dept
+
+select emp_name,emp_id,emp_sal from (
+select e1.emp_name,e1.emp_id,e1.emp_sal,e2.emp_id manager_id,e2.emp_sal manager_sal,dept
+from EMP e1 inner join EMP e2 on e1.emp_id = e2.manager_id
+) a
+where emp_sal > manager_sal
+
+df.alias("e1").join(df.alias("e2"), col("e1.emp_id") ==  col("e2.emp_id"), "inner")\
+.filter(col("e1.emp_sal") > col("e2.emp_sal"))\
+.select(col("e1.emp_name"),col("e1.emp_id"),col("e1.emp_sal"))\
+.show()
+
+
+Find the running profit 
+----------------------
+Schema:
+trans_id,trans_dt,profit
+
+select *, sum() over(order by trans_dt asc) as running_sum from TRANSACTION
+
+from pyspark.sql.window import Window
+
+window_spec = Window.orderBy(col("trans_dt").asc())
+final_df = df.withColumn("running_sum", sum().over(window_spec))
+final_df.show()
+
+Find on all date,wether profit is increasing or decreasing from previous day
+-------------------------------------------------------------------------
+Schema:
+trans_id,trans_dt,profit
+
+select *, case when profit< prev_profit then "Incresing", when profit = prev_profit then "Remain Same" else "Decreasing" end AS progress from (
+select *,lag() over(order by trans_dt asc) as prev_profit from TRANSACTION) a
+
+window_spec = Window.orderBy(col("trans_dt").asc())
+final_df = df.withColumn("prev_profit", lag(1).over(window_spec))\
+	.select(when(col("profit") < col("prev_profit"),"INCREASING")\
+	.when(col("profit") == col("prev_profit"),"REMAIN CONSTANT")\
+	.otherwise("DECREASING").alias("PROGRESS"))
+final_df.show()
+
+
+Read a file from delta lake, Remove the duplicate and Write it back to delta lake
+---------------------------------------------------------------------------------
+
+df = spark.read.csv("gs://raw/source/Population.csv").option("header","True"),option("badRecordPaths","gs://source/corrupt_record.csv")
+cleaned_df = df.dropDuplicate(col("x"),col("y"))
+or
+cleaned_df = df.dropDuplicate()
+or
+cleaned_df = df.distinct()
+cleaned_df.write.parquet("gs://cleaned/source/Population.csv").mode("overwrite")
+
+
+Find person who are only purchasing from amazon not from myntra
+----------------------------------------------------------------
+Schema is same for Amazon and Myntra
+txn_id, txn_date,txn_amt, category
+
+select * from Amazon where txn_id not in (select txn_id from myntra);
+
+select * from Amazon a left_semi_join Myntra m on a.txn_id = b.txn_id
+
+Find top 10 customer in each category based on total spending
+--------------------------------------------------------------
+Schema is same for Amazon and Myntra
+txn_id, txn_date,txn_amt, category
+
+select *, row_number() over(partition by category order by total_sum desc) as rnk from
+(select category,txn,sum(txn_amt) total_sum from AMAZON)
+qualify rnk <=10
+
+Find the number of emp present inside and outside of office at particular time
+-------------------------------------------------------------------------------
+Schema
+id, time, status, project, supervisor
+1, 9:00, IN, CVS, Veera
+1, 9:15 , OUT, CVS, Veera
+
+with cte as (
+select id,status from OFFICE o inner join  
+(select id, max(time) time from OFFICE group by id) s
+on o.id = s.id and o.time = s.time
+where status = 'OUT'
+)
+select count(*) from cte;
+
+Oldest Person should match with smallest child
+-----------------------------------------------
+id,Type,Age
+A1, Adult, 54
+A2, Adult, 46
+A3, Adult, 34
+C1,Child, 13
+C2,Child, 17
+
+O/p  A_id, C_id
+A1,C1
+A2,C2
+A3, Null
+
+select a.id,b.id from
+(select *, row_number() over(order by Age desc) rnk from Person where Type = "Adult") a left join
+(select *, row_number() over(order by Age asc) rnk from Person where Type = "Child") c
+on a.rnk = b.rnk
+
+How to process 1TB of data in pyspark
+--------------------------------------
+
+The default partition size is 128mb
+1GB data contains = 1024/128 = 8 partitions
+1TB = 1GB*1000 = 8 *1000 = 8000 Partitions
+
+The cluster configuration we are taking is "n2-highmem-8" have 128GB memory
+It means each Worker Node is having 8 core and 64GB memory
+
+Total worker node is 10 worker Node
+
+1 core & 1GB need to be given to Yarn resource
+
+Therefore, total no. of core = 7*10 = 70 cores
+Therefore, total no. of memory = 63*10 = 630 GB 
+
+suppose, each executor have 5 core cpu
+total number of executor = 70 / 5 = 14 Executor
+Each executor memory = 630GB / 14 = 4 GB 
+Executor memory = max(10% 4GB,384MB) = max(3.6GB,384MB) = 3.6GB
+
+Each core will get = 3.6GB/5 = 700MB
+Each core should get 4*128MB  minimum = 512MB ideally,
+& we are giving 700Mb
+
+
+If we have 10 executor then we can process 70core * 128MB = 8690MB ~ 8.5GB in parallel
+Total number of parallel processing = 8000/70 = 124 number of parallel task need to be perform
+
+if 1 parallel task takes  1min then it will take 124 min to complete whole task 
+2 hour 4 min
+
+
+Salting
+---------
+
+from pyspark.sql import functions F
+
+spark.conf.set("spark.sql.shuffle.partitions", "3")
+spark.conf.get("spark.sql.shuffle.partitions")
+spark.conf.set("spark.sql.adaptive.enabled", "false")
+
+salt_num = int(spark.conf.get("spark.sql.shuffle.partitions"))
+large_df = df1.withColumn("salt", F.rand()*salt_num.cast("int")).withColumn("salt_key", concat(col("id"),"_",col("salt").cast("string"))
+samall_df = df2.withColumn("salt",explode(F.array([F.lit(i) for i in range(SALT_NUMBER)])))\
+	.withColumn("salt_key", concat(col("id"),"_",col("salt").cast("string"))
+
+output_df = df1.alias("a").join(df2.alias("b"),col("a.salt_key") = col("b.salt_key"),"inner")\
+	.select(col("a.salt_key").alias("a_salt_key"),col("b.salt_key").alias("b_salt_key"))
+final_df = df.withColumn("a_id", split(col("a_salt_key"),"_")[0]).withColumn("b_id", split(col("b_salt_key"),"_")[0])
+
+Unnest the subject for each student
+--------------------------------------
+
+id,subject
+1, "Eng,Hindi,Math"
+2, "Science,Chemistry"
+
+output
+id, sub
+1,Eng
+1,Hindi
+1,Math
+2,Science
+2,Chemistry
+
+select id,un.sub from 
+(select id,split(subject) sub from Student) a, unnest(a.sub) un
+
+List all the subject for every student in sigle row
+----------------------------------------------------
+id, subject
+1,Eng
+1,Hindi
+1,Math
+2,Science
+2,Chemistry
+
+select id,string_agg(',',subject) from Student group by id
+
+List all the subject for every student in sigle row & the student who enrolled in all subject
+----------------------------------------------------------------------------------------------
+Declare cnt integer;
+Set cnt = (select count(distinct subject) from Student);
+
+select id,array_length(d_sub_cnt) from 
+(select id, array_agg(distinct subject ) d_sub_cnt from Student) tmp
+where array_length(d_sub_cnt) = cnt;
+
+
+Pyspark Concepts
+-----------------
+Pyspark Architecture
+Catalyst Optimizer
+Driver & Executor Memory Allocation
+Client Mode & Cluster Mode
+RDD vs Dataframe vs Dataset
+DAG & Lineage Graph
+Repartion(100), Coalesce(10)
+Shuffling
+narrawow and wide
+Job,stage,task
+Action
+collect(), show(),count()
+df.cahche()
+df.unpersist()
+pario, bucketing
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
